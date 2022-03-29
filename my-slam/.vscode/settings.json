@@ -65,6 +65,9 @@
         "typeinfo": "cpp",
         "variant": "cpp",
         "dense": "cpp",
-        "core": "cpp"
+        "core": "cpp",
+        "hash_map": "cpp",
+        "hash_set": "cpp",
+        "*.txx": "cpp"
     }
 }

@@ -1,19 +1,24 @@
-#include "camera.h"
+#include "artwork/timer/timer.h"
+#include "myslam.h"
 #include "opencv2/opencv.hpp"
 
 int main(int argc, char const *argv[]) {
-  auto img = std::make_shared<cv::Mat>(cv::imread("../img/distorted.png", cv::IMREAD_GRAYSCALE));
+  auto img1 = std::make_shared<cv::Mat>(cv::imread("../img/1.png", cv::IMREAD_GRAYSCALE));
+  auto img2 = std::make_shared<cv::Mat>(cv::imread("../img/2.png", cv::IMREAD_GRAYSCALE));
 
-  double k1 = -0.28340811, k2 = 0.07395907, p1 = 0.00019359, p2 = 1.76187114e-05;
-  double fx = 458.654, fy = 457.296, cx = 367.215, cy = 248.375;
+  double k1 = 0.0, k2 = 0.0, p1 = 0.0, p2 = 0.0;
+  double fx = 520.9, fy = 521.0, cx = 325.1, cy = 249.7;
 
-  ns_myslam::MonoCamera camera(fx, fy, cx, cy, k1, k2, 0.0f, p1, p2);
-  auto [xRange, yRange] = camera.undistort(img);
+  auto camera = ns_myslam::MonoCamera::create(fx, fy, cx, cy, k1, k2, 0.0f, p1, p2);
+  auto orb = ns_myslam::ORBFeature::create();
 
-  std::cout << "xRange: " << xRange << " yRange: " << yRange << std::endl;
-  std::cout << camera << std::endl;
-
-  cv::imshow("win", *img);
-  cv::waitKey(0);
+  ns_myslam::MySLAM slam(camera, orb);
+  ns_timer::Timer<> timer;
+  timer.reStart();
+  slam.addFrame(0, img1);
+  std::cout << timer.last_elapsed("fir frame") << std::endl;
+  timer.reStart();
+  slam.addFrame(1, img2);
+  std::cout << timer.last_elapsed("sed frame") << std::endl;
   return 0;
 }

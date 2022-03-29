@@ -7,7 +7,12 @@
 #include <memory>
 
 namespace ns_myslam {
+  using MatPtr = std::shared_ptr<cv::Mat>;
+
   class MonoCamera {
+  public:
+    using Ptr = std::shared_ptr<MonoCamera>;
+
   public:
     const float fx, fy, fx_inv, fy_inv;
     const float cx, cy;
@@ -21,7 +26,7 @@ namespace ns_myslam {
     mutable bool _initialized;
 
     // {[xMin, xMax), [yMin, yMax)}
-    mutable std::pair<cv::Range, cv::Range> _imgRange;
+    mutable std::pair<cv::Range, cv::Range> _winRange;
 
   public:
     MonoCamera() = delete;
@@ -40,6 +45,8 @@ namespace ns_myslam {
      * @param p2 tangential distortion parameter
      */
     MonoCamera(float fx, float fy, float cx, float cy, float k1, float k2, float k3, float p1, float p2);
+
+    static MonoCamera::Ptr create(float fx, float fy, float cx, float cy, float k1, float k2, float k3, float p1, float p2);
 
   public:
     /**
@@ -64,7 +71,16 @@ namespace ns_myslam {
      * @param grayImg the gray image to be undistorted
      * @return std::pair<cv::Range, cv::Range> the (minu, maxu) and (minv, maxv) of the valid boundary
      */
-    std::pair<cv::Range, cv::Range> undistort(std::shared_ptr<cv::Mat> &grayImg) const;
+    const std::pair<cv::Range, cv::Range> &undistort(MatPtr &grayImg) const;
+
+    /**
+     * @brief whether the pixel is in the window range
+     *
+     * @param pixel the pixel
+     * @return true it's in the win range
+     * @return false it's not in the win range
+     */
+    bool pixelInWinRange(const Eigen::Vector2f &pixel) const;
 
   protected:
     /**

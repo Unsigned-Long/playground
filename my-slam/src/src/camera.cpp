@@ -7,9 +7,13 @@ namespace ns_myslam {
       : fx(fx), fy(fy), fx_inv(1.0f / fx), fy_inv(1.0f / fy), cx(cx), cy(cy),
         k1(k1), k2(k2), k3(k3),
         p1(p1), p2(p2),
-        _initialized(false), _imgRange() {
+        _initialized(false), _winRange() {
     this->_cameraMatrix = (cv::Mat_<double>(3, 3) << fx, 0.0, cx, 0.0, fy, cy, 0.0, 0.0, 1.0);
     this->_distCoeffs = (cv::Mat_<double>(4, 1) << k1, k2, p1, p2);
+  }
+
+  MonoCamera::Ptr MonoCamera::create(float fx, float fy, float cx, float cy, float k1, float k2, float k3, float p1, float p2) {
+    return std::make_shared<MonoCamera>(fx, fy, cx, cy, k1, k2, k3, p1, p2);
   }
 
   Eigen::Vector3f MonoCamera::pixel2nplane(const Eigen::Vector2f &pixel) const {
@@ -27,7 +31,7 @@ namespace ns_myslam {
     return pixel;
   }
 
-  std::pair<cv::Range, cv::Range> MonoCamera::undistort(std::shared_ptr<cv::Mat> &grayImg) const {
+  const std::pair<cv::Range, cv::Range> &MonoCamera::undistort(MatPtr &grayImg) const {
     // rows and cols of this image
     int rows = grayImg->rows, cols = grayImg->cols;
     // image to keep the undistorted image
@@ -72,12 +76,20 @@ namespace ns_myslam {
       float yMin = std::max({leftTop(1), rightTop(1), 0.0f});
       float yMax = std::min({leftBottom(1), rightBottom(1), float(rows)});
 
-      this->_imgRange.first = cv::Range(xMin, xMax);
-      this->_imgRange.second = cv::Range(yMin, yMax);
+      this->_winRange.first = cv::Range(xMin, xMax);
+      this->_winRange.second = cv::Range(yMin, yMax);
       this->_initialized = true;
     }
 
-    return this->_imgRange;
+    return this->_winRange;
+  }
+
+  bool MonoCamera::pixelInWinRange(const Eigen::Vector2f &pixel) const {
+    if ((pixel[0] > this->_winRange.first.start && pixel[0] < this->_winRange.first.end) &&
+        (pixel[1] > this->_winRange.second.start && pixel[1] < this->_winRange.second.end)) {
+      return true;
+    }
+    return false;
   }
 
   Eigen::Vector2f MonoCamera::findUndistortedPixel(const Eigen::Vector2f &distortedPixel) const {
