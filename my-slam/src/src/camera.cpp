@@ -61,8 +61,8 @@ namespace ns_myslam {
     // calculate the range of the image
     if (!this->_initialized) {
 
-      Eigen::Vector2f leftTop(0.0f, 0.0f), rightTop(cols, 0.0f);
-      Eigen::Vector2f leftBottom(0.0f, rows), rightBottom(cols, rows);
+      Eigen::Vector2f leftTop(0.0f, 0.0f), rightTop(cols - 1, 0.0f);
+      Eigen::Vector2f leftBottom(0.0f, rows - 1), rightBottom(cols - 1, rows - 1);
 
       leftTop = this->findUndistortedPixel(leftTop), rightTop = this->findUndistortedPixel(rightTop);
       leftBottom = this->findUndistortedPixel(leftBottom), rightBottom = this->findUndistortedPixel(rightBottom);
