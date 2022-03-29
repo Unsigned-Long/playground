@@ -13,13 +13,24 @@ namespace ns_myslam {
     friend class MySLAM;
 
   private:
-    Eigen::Vector3f _mapPoint;
-    std::unordered_map<int, int> _frameFeatures;
+    const int _id;
+    // coordinate value of the map point
+    Eigen::Vector3d _pt;
+    // {witch frame, witch key point}
+    std::vector<std::pair<int, int>> _frameFeatures;
 
   public:
-    MapPoint(const Eigen::Vector3f &mapPoint);
+    /**
+     * @brief construct a new MapPoint
+     *
+     * @param mapPoint the coordinate value
+     */
+    MapPoint(int id, const Eigen::Vector3d &point);
 
-    static MapPoint::Ptr create(const Eigen::Vector3f &mapPoint);
+    /**
+     * @brief create a shared pointer
+     */
+    static MapPoint::Ptr create(int id, const Eigen::Vector3d &point);
   };
 
 } // namespace ns_myslam

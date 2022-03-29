@@ -14,10 +14,10 @@ namespace ns_myslam {
     using Ptr = std::shared_ptr<MonoCamera>;
 
   public:
-    const float fx, fy, fx_inv, fy_inv;
-    const float cx, cy;
-    const float k1, k2, k3;
-    const float p1, p2;
+    const double fx, fy, fx_inv, fy_inv;
+    const double cx, cy;
+    const double k1, k2, k3;
+    const double p1, p2;
 
   private:
     cv::Mat _cameraMatrix;
@@ -44,26 +44,26 @@ namespace ns_myslam {
      * @param p1 tangential distortion parameter
      * @param p2 tangential distortion parameter
      */
-    MonoCamera(float fx, float fy, float cx, float cy, float k1, float k2, float k3, float p1, float p2);
+    MonoCamera(double fx, double fy, double cx, double cy, double k1, double k2, double k3, double p1, double p2);
 
-    static MonoCamera::Ptr create(float fx, float fy, float cx, float cy, float k1, float k2, float k3, float p1, float p2);
+    static MonoCamera::Ptr create(double fx, double fy, double cx, double cy, double k1, double k2, double k3, double p1, double p2);
 
   public:
     /**
      * @brief project the points on the pixel coordinate plane onto the normalized pixel coordinate plane
      *
      * @param pixel points on the pixel coordinate plane
-     * @return Eigen::Vector3f coordinates of points on the normalized pixel coordinate plane
+     * @return Eigen::Vector3d coordinates of points on the normalized pixel coordinate plane
      */
-    Eigen::Vector3f pixel2nplane(const Eigen::Vector2f &pixel) const;
+    Eigen::Vector3d pixel2nplane(const Eigen::Vector2d &pixel) const;
 
     /**
      * @brief project the points on the normalized pixel coordinate plane onto the pixel coordinate plane
      *
      * @param nplanePoint points on the normalized pixel coordinate plane
-     * @return Eigen::Vector2f coordinates of points on the pixel coordinate plane
+     * @return Eigen::Vector2d coordinates of points on the pixel coordinate plane
      */
-    Eigen::Vector2f nplane2pixel(const Eigen::Vector3f &nplanePoint) const;
+    Eigen::Vector2d nplane2pixel(const Eigen::Vector3d &nplanePoint) const;
 
     /**
      * @brief undistort an image
@@ -80,16 +80,16 @@ namespace ns_myslam {
      * @return true it's in the win range
      * @return false it's not in the win range
      */
-    bool pixelInWinRange(const Eigen::Vector2f &pixel) const;
+    bool pixelInWinRange(const Eigen::Vector2d &pixel) const;
 
   protected:
     /**
      * @brief compute the undistorted pixel
      *
      * @param distortedPixel the distorted pixel
-     * @return Eigen::Vector2f the undistorted pixel
+     * @return Eigen::Vector2d the undistorted pixel
      */
-    Eigen::Vector2f findUndistortedPixel(const Eigen::Vector2f &distortedPixel) const;
+    Eigen::Vector2d findUndistortedPixel(const Eigen::Vector2d &distortedPixel) const;
   };
 
   /**

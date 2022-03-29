@@ -68,6 +68,10 @@
         "core": "cpp",
         "hash_map": "cpp",
         "hash_set": "cpp",
-        "*.txx": "cpp"
+        "*.txx": "cpp",
+        "csignal": "cpp",
+        "codecvt": "cpp",
+        "future": "cpp",
+        "valarray": "cpp"
     }
 }

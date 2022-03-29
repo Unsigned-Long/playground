@@ -1,9 +1,10 @@
 #include "mappoint.h"
 
 namespace ns_myslam {
-  MapPoint::MapPoint(const Eigen::Vector3f &mapPoint) : _mapPoint(mapPoint), _frameFeatures() {}
+  MapPoint::MapPoint(int id, const Eigen::Vector3d &point)
+      : _id(id), _pt(point), _frameFeatures() {}
 
-  MapPoint::Ptr MapPoint::create(const Eigen::Vector3f &mapPoint) {
-    return std::make_shared<MapPoint>(mapPoint);
+  MapPoint::Ptr MapPoint::create(int id, const Eigen::Vector3d &point) {
+    return std::make_shared<MapPoint>(id, point);
   }
 } // namespace ns_myslam

@@ -5,6 +5,7 @@
 #include "mappoint.h"
 #include "opencv2/core.hpp"
 #include "orbfeature.h"
+#include "sophus/se3.hpp"
 #include <memory>
 
 namespace ns_myslam {
@@ -21,9 +22,11 @@ namespace ns_myslam {
     MatPtr _grayImg;
 
     // the key points in this frame
-    std::vector<cv::KeyPoint> _keyPoints;
-    // map point corresponding to key point, existed only when the key point is matched width the next image
-    std::unordered_map<int, MapPoint::Ptr> _mapPoints;
+    std::vector<cv::KeyPoint> _kpts;
+    // the related map point's id, "-1" means there isn't a map point related with this key point
+    std::vector<int> _relatedMpts;
+
+    Sophus::SE3d _pose;
 
   public:
     /**

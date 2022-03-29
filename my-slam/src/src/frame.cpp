@@ -2,7 +2,7 @@
 
 namespace ns_myslam {
   Frame::Frame(int id, MatPtr grayImg, MonoCamera::Ptr camera, ORBFeature::Ptr orbFeature)
-      : _id(id), _grayImg(grayImg), _keyPoints(), _mapPoints() {
+      : _id(id), _grayImg(grayImg), _kpts(), _relatedMpts() {
     this->pretreatment(camera, orbFeature);
   }
 
@@ -12,14 +12,15 @@ namespace ns_myslam {
 
   void Frame::pretreatment(MonoCamera::Ptr camera, ORBFeature::Ptr orbFeature) {
     // undistort the image
-    camera->undistort(this->_grayImg);
-    // detect the key points
-    auto keyPoints = orbFeature->detect(this->_grayImg);
+    auto &[xRange, yRange] = camera->undistort(this->_grayImg);
+    // detect the key points in the win range
+    this->_kpts = orbFeature->detect(this->_grayImg, xRange, yRange);
+    this->_relatedMpts.resize(this->_kpts.size());
     // select key point in win range
-    for (auto kp : keyPoints) {
-      if (camera->pixelInWinRange(Eigen::Vector2f(kp.pt.x, kp.pt.y))) {
-        this->_keyPoints.push_back(kp);
-      }
+    for (int i = 0; i != this->_kpts.size(); ++i) {
+      this->_kpts.at(i).pt.x += xRange.start;
+      this->_kpts.at(i).pt.y += yRange.start;
+      this->_relatedMpts.at(i) = -1;
     }
     return;
   }
