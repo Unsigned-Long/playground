@@ -97,10 +97,35 @@ namespace ns_myslam {
     std::pair<std::vector<cv::Point2d>, std::vector<cv::Point2d>>
     matchedKeyPoints(const std::vector<cv::DMatch> &matches, Frame::Ptr frame1, Frame::Ptr frame2);
 
+    /**
+     * @brief compute the map point's coordinate using [triangulation]
+     *
+     * @param pixel1 the pixel in first frame
+     * @param pixel2 the pixel in secnd frame
+     * @param rotMat_21 rortation matrix from first frame to second frame
+     * @param transMat_21 translation matrix from first frame to second frame
+     * @return Eigen::Vector3d the coordinate value of map point in the first frame camera coordinate system
+     */
     Eigen::Vector3d triangulation(const Eigen::Vector2d &pixel1, const Eigen::Vector2d &pixel2,
                                   const Eigen::Matrix3d &rotMat_21, const Eigen::Vector3d &transMat_21);
 
+    /**
+     * @brief find key point in frame [frameId] indexed [kptIdx]
+     *
+     * @param frameId the id of frame
+     * @param kptIdx the index of the key point
+     * @return cv::KeyPoint& the key point
+     */
     cv::KeyPoint &findKeyPoint(int frameId, int kptIdx);
+
+    /**
+     * @brief run the PnP estimate
+     *
+     * @param initVal the initialized value of the pose
+     * @param mptIds the vector of map points' ids
+     * @return Sophus::SE3d the pose
+     */
+    Sophus::SE3d estimatePnP(const Sophus::SE3d &initVal, const std::vector<int> &mptIds);
   };
 } // namespace ns_myslam
 

@@ -28,6 +28,8 @@ namespace ns_myslam {
 
       // ids of new map points need to be triangulated
       std::vector<int> mptIdTriangulate;
+      // ids of new map points need to be estimate [PnP]
+      std::vector<int> mptIdPnP;
 
       // create a map point for each good match if necessary
       for (const auto &match : goodMatches) {
@@ -51,8 +53,11 @@ namespace ns_myslam {
           // there is a map point for key point in last frame
           int mptId = lastFrame->_relatedMpts.at(match.queryIdx);
           MapPoint::Ptr mpt = this->findMapPoint(mptId);
+
           mpt->_frameFeatures.push_back({curFrame->_id, match.trainIdx});
           curFrame->_relatedMpts.at(match.trainIdx) = mptId;
+
+          mptIdPnP.push_back(mptId);
         }
       }
 
@@ -108,6 +113,13 @@ namespace ns_myslam {
 
       } else {
         ns_log::info("run PnP estimate [3d-2d]");
+        // pose from world to current frame
+        curFrame->_pose = this->estimatePnP(lastFrame->_pose, mptIdPnP);
+        // pose from last frame to current frame
+        auto pose_21 = curFrame->_pose * lastFrame->_pose.inverse();
+        // get rotation matrix and translate matrix
+        rotMat_21 = pose_21.rotationMatrix();
+        transMat_21 = pose_21.translation();
       }
 
       ns_log::info("triangulation for map points");
@@ -131,7 +143,7 @@ namespace ns_myslam {
             Eigen::Vector2d(pixel2.pt.x, pixel2.pt.y),
             rotMat_21, transMat_21);
 
-        // get coordinate of map point in the space
+        // get coordinate value of map point in the world coordiante system
         mpt->_pt = lastFrame->_pose.inverse() * mptInLastFrame;
       }
 
@@ -246,5 +258,59 @@ namespace ns_myslam {
 
   cv::KeyPoint &MySLAM::findKeyPoint(int frameId, int kptIdx) {
     return this->findFrame(frameId)->_kpts.at(kptIdx);
+  }
+
+  Sophus::SE3d MySLAM::estimatePnP(const Sophus::SE3d &initVal, const std::vector<int> &mptIds) {
+    Sophus::SE3d pose = initVal;
+
+    // focal length in x and y direction of this camera
+    double fx = this->_camera->fx;
+    double fy = this->_camera->fy;
+
+    for (int i = 0; i != 10; ++i) {
+      Eigen::Matrix<double, 6, 6> H = Eigen::Matrix<double, 6, 6>::Zero();
+      Eigen::Vector<double, 6> g = Eigen::Vector<double, 6>::Zero();
+
+      for (const auto &mptId : mptIds) {
+
+        auto mpt = this->findMapPoint(mptId);
+
+        int frameId = mpt->_frameFeatures.back().first;
+        int kptIdx = mpt->_frameFeatures.back().second;
+
+        auto kp = this->findKeyPoint(frameId, kptIdx);
+        auto mptPt = mpt->_pt;
+        double X = mptPt(0), Y = mptPt(1), Z = mptPt(2), ZInv = 1.0 / Z, ZInv2 = 1.0 / (Z * Z);
+
+        Eigen::Vector2d pixel(kp.pt.x, kp.pt.y);
+
+        // ocauculate the error
+        auto error = pixel - this->_camera->nplane2pixel(Eigen::Vector3d(X / Z, Y / Z, 1.0));
+
+        // organize the jacobian matrix
+        Eigen::Matrix<double, 6, 2> J;
+        J << fx * ZInv, 0.0,
+            0.0, fy * ZInv,
+            -fx * X * ZInv2, -fy * Y * ZInv2,
+            -fx * X * Y * ZInv2, -fy - fy * Y * Y * ZInv2,
+            fx + fx * X * X * ZInv2, fy * X * Y * ZInv2,
+            -fx * Y * ZInv, fy * X * ZInv;
+        J *= -1.0;
+
+        H += J * J.transpose();
+        g += -J * error;
+      }
+      // The first three components  represent the translational part , while the last three components
+      // represents the rotation vector.
+      Eigen::Vector<double, 6> deta = H.ldlt().solve(g);
+      
+      // update
+      pose = Sophus::SE3d::exp(deta) * pose;
+
+      if (deta.norm() < 1E-6) {
+        break;
+      }
+    }
+    return pose;
   }
 } // namespace ns_myslam
