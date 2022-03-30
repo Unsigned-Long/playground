@@ -13,9 +13,12 @@ namespace ns_myslam {
   void Frame::pretreatment(MonoCamera::Ptr camera, ORBFeature::Ptr orbFeature) {
     // undistort the image
     auto &[xRange, yRange] = camera->undistort(this->_grayImg);
+
     // detect the key points in the win range
     this->_kpts = orbFeature->detect(this->_grayImg, xRange, yRange);
+
     this->_relatedMpts.resize(this->_kpts.size());
+
     // select key point in win range
     for (int i = 0; i != this->_kpts.size(); ++i) {
       this->_kpts.at(i).pt.x += xRange.start;

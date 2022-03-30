@@ -14,11 +14,8 @@ int main(int argc, char const *argv[]) {
 
   ns_myslam::MySLAM slam(camera, orb);
   ns_timer::Timer<> timer;
-  timer.reStart();
   slam.addFrame(0, img1);
-  std::cout << timer.last_elapsed("fir frame") << std::endl;
-  timer.reStart();
+  std::cout << "\n";
   slam.addFrame(1, img2);
-  std::cout << timer.last_elapsed("sed frame") << std::endl;
   return 0;
 }

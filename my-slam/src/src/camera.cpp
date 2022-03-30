@@ -34,8 +34,10 @@ namespace ns_myslam {
   const std::pair<cv::Range, cv::Range> &MonoCamera::undistort(MatPtr &grayImg) const {
     // rows and cols of this image
     int rows = grayImg->rows, cols = grayImg->cols;
+
     // image to keep the undistorted image
     auto undistortedImg = std::make_shared<cv::Mat>(rows, cols, grayImg->type());
+    
     // undistort [2 times faster than OpenCV]
     for (int r = 0; r != rows; ++r) {
       auto dstPtr = undistortedImg->ptr<uchar>(r);

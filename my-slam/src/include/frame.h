@@ -1,6 +1,8 @@
 #ifndef FRAME_H
 #define FRAME_H
 
+#include "artwork/logger/logger.h"
+#include "artwork/timer/timer.h"
 #include "camera.h"
 #include "mappoint.h"
 #include "opencv2/core.hpp"
@@ -9,7 +11,11 @@
 #include <memory>
 
 namespace ns_myslam {
+
+  static ns_timer::Timer<> timer = ns_timer::Timer<>();
+
   class MySLAM;
+
   class Frame {
   public:
     using Ptr = std::shared_ptr<Frame>;
@@ -23,6 +29,7 @@ namespace ns_myslam {
 
     // the key points in this frame
     std::vector<cv::KeyPoint> _kpts;
+
     // the related map point's id, "-1" means there isn't a map point related with this key point
     std::vector<int> _relatedMpts;
 
