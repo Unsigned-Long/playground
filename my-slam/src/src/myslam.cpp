@@ -1,6 +1,8 @@
 #include "myslam.h"
 #include "opencv2/calib3d/calib3d.hpp"
 #include "opencv2/core/eigen.hpp"
+#include "opencv2/highgui.hpp"
+#include "opencv2/imgproc.hpp"
 
 namespace ns_myslam {
   MySLAM::MySLAM(MonoCamera::Ptr camera, ORBFeature::Ptr orbFeature)
@@ -79,30 +81,35 @@ namespace ns_myslam {
           cv::cv2eigen(t, transMat_21);
 
           // find the badest match
-          auto maxIter = std::max_element(
-              goodMatches.begin(), goodMatches.end(),
-              [this, lastFrame, curFrame, &rotMat_21, &transMat_21](const cv::DMatch &m1, const cv::DMatch &m2) {
-                double error1 = this->matchError(m1, rotMat_21, transMat_21, lastFrame, curFrame);
-                double error2 = this->matchError(m2, rotMat_21, transMat_21, lastFrame, curFrame);
-                return error1 < error2;
-              });
 
+          double maxError = this->matchError(goodMatches.front(), rotMat_21, transMat_21, lastFrame, curFrame);
+          double meanError = maxError;
+          int maxErrorIdx = 0;
+          for (int i = 1; i != goodMatches.size(); ++i) {
+            double error = this->matchError(goodMatches.at(i), rotMat_21, transMat_21, lastFrame, curFrame);
+            meanError += error;
+            if (error > maxError) {
+              maxError = error;
+              maxErrorIdx = i;
+            }
+          }
+          meanError /= goodMatches.size();
           // if the error is big
-          double error = this->matchError(*maxIter, rotMat_21, transMat_21, lastFrame, curFrame);
-          if (error < 0.05) {
+
+          if (maxError < 10.0 * meanError) {
             break;
           }
-
+          auto maxErrorMatch = goodMatches.at(maxErrorIdx);
           // remove the map point [invalid map point]
-          int mptId = lastFrame->_relatedMpts.at(maxIter->queryIdx);
+          int mptId = lastFrame->_relatedMpts.at(maxErrorMatch.queryIdx);
           this->findMapPoint(mptId) = nullptr;
 
           // remove the frame's  related map point
-          lastFrame->_relatedMpts.at(maxIter->queryIdx) = -1;
-          curFrame->_relatedMpts.at(maxIter->trainIdx) = -1;
+          lastFrame->_relatedMpts.at(maxErrorMatch.queryIdx) = -1;
+          curFrame->_relatedMpts.at(maxErrorMatch.trainIdx) = -1;
 
           // remove the badest match
-          *maxIter = goodMatches.back();
+          goodMatches.at(maxErrorIdx) = goodMatches.back();
           goodMatches.pop_back();
         }
 
@@ -114,12 +121,47 @@ namespace ns_myslam {
       } else {
         ns_log::info("run PnP estimate [3d-2d]");
         // pose from world to current frame
-        curFrame->_pose = this->estimatePnP(lastFrame->_pose, mptIdPnP);
+        auto pose = lastFrame->_pose;
+
+        while (true) {
+          pose = this->estimatePnP(pose, mptIdPnP);
+
+          double maxError = this->estimatePnPError(mptIdPnP.front(), pose);
+          double meanError = maxError;
+          int maxErrorIdx = 0;
+
+          for (int i = 1; i != mptIdPnP.size(); ++i) {
+            double error = this->estimatePnPError(mptIdPnP.at(i), pose);
+            meanError += error;
+            if (error > maxError) {
+              maxError = error;
+              maxErrorIdx = i;
+            }
+          }
+          meanError /= mptIdPnP.size();
+
+          if (maxError < 5.0 * meanError) {
+            break;
+          }
+
+          // remove the match [key point with map point]
+          int maxErrorId = mptIdPnP.at(maxErrorIdx);
+          auto [frameId, kptIdx] = this->findMapPoint(maxErrorId)->_frameFeatures.back();
+          this->findFrame(frameId)->_relatedMpts.at(kptIdx) = -1;
+          // remove the related map point
+          this->findMapPoint(maxErrorId)->_frameFeatures.pop_back();
+          // remove the map point to be estimate [PnP]
+          mptIdPnP.at(maxErrorIdx) = mptIdPnP.back();
+          mptIdPnP.pop_back();
+        }
+
         // pose from last frame to current frame
-        auto pose_21 = curFrame->_pose * lastFrame->_pose.inverse();
+        auto pose_21 = pose * lastFrame->_pose.inverse();
         // get rotation matrix and translate matrix
         rotMat_21 = pose_21.rotationMatrix();
         transMat_21 = pose_21.translation();
+
+        curFrame->_pose = pose;
       }
 
       ns_log::info("triangulation for map points");
@@ -136,7 +178,6 @@ namespace ns_myslam {
         auto [feature1, feature2] = mpt->lastTwoFramesFeatures();
         auto pixel1 = this->findKeyPoint(feature1.first, feature1.second);
         auto pixel2 = this->findKeyPoint(feature2.first, feature2.second);
-
         // triangulation
         auto mptInLastFrame = this->triangulation(
             Eigen::Vector2d(pixel1.pt.x, pixel1.pt.y),
@@ -157,6 +198,7 @@ namespace ns_myslam {
 
     std::cout << timer.total_elapsed("adding frame [" + std::to_string(curFrame->_id) + "] costs") << std::endl;
 
+    this->showCurrentFrame(curFrame);
     return *this;
   }
 
@@ -253,6 +295,8 @@ namespace ns_myslam {
 
     double s1 = ((B.transpose() * B).inverse() * B.transpose() * l)(0, 0);
 
+    double error = (B * s1 - l).norm();
+
     return nplane1 * s1;
   }
 
@@ -275,11 +319,11 @@ namespace ns_myslam {
 
         auto mpt = this->findMapPoint(mptId);
 
-        int frameId = mpt->_frameFeatures.back().first;
-        int kptIdx = mpt->_frameFeatures.back().second;
-
+        auto [frameId, kptIdx] = mpt->_frameFeatures.back();
+        // key point
         auto kp = this->findKeyPoint(frameId, kptIdx);
-        auto mptPt = mpt->_pt;
+        // map point
+        auto mptPt = pose * mpt->_pt;
         double X = mptPt(0), Y = mptPt(1), Z = mptPt(2), ZInv = 1.0 / Z, ZInv2 = 1.0 / (Z * Z);
 
         Eigen::Vector2d pixel(kp.pt.x, kp.pt.y);
@@ -303,7 +347,7 @@ namespace ns_myslam {
       // The first three components  represent the translational part , while the last three components
       // represents the rotation vector.
       Eigen::Vector<double, 6> deta = H.ldlt().solve(g);
-      
+
       // update
       pose = Sophus::SE3d::exp(deta) * pose;
 
@@ -313,4 +357,42 @@ namespace ns_myslam {
     }
     return pose;
   }
+
+  double MySLAM::estimatePnPError(int mptId, const Sophus::SE3d &pose_cw) {
+    // find map point
+    auto mptPt = this->findMapPoint(mptId)->_pt;
+    auto mptCurCoord = pose_cw * mptPt;
+    // reproject to pixel
+    auto rePrjPixel = this->_camera->nplane2pixel(Eigen::Vector3d(
+        mptCurCoord(0) / mptCurCoord(2), mptCurCoord(1) / mptCurCoord(2), 1.0));
+    // find key point
+    auto [frameId, kptIdx] = this->findMapPoint(mptId)->_frameFeatures.back();
+    auto pixel = this->findKeyPoint(frameId, kptIdx);
+    Eigen::Vector2d p(pixel.pt.x, pixel.pt.y);
+    // compute error
+    return (p - rePrjPixel).norm();
+  }
+
+  Sophus::SE3d MySLAM::currentPose() const {
+    if (this->_frames.empty()) {
+      return Sophus::SE3d();
+    } else {
+      return this->_frames.back()->_pose;
+    }
+  }
+
+  void MySLAM::showCurrentFrame(Frame::Ptr frame) const {
+    cv::Mat img = frame->_grayImg->clone();
+    cv::cvtColor(img, img, cv::COLOR_GRAY2BGR);
+    for (int i = 0; i != frame->_kpts.size(); ++i) {
+      if (frame->_relatedMpts.at(i) >= 0) {
+        auto kpt = frame->_kpts.at(i);
+        cv::drawMarker(img, kpt.pt, cv::Scalar(0, 255, 0), cv::MarkerTypes::MARKER_CROSS, 5, 1);
+      }
+    }
+    cv::imshow("win", img);
+    cv::waitKey(10);
+    return;
+  }
+
 } // namespace ns_myslam

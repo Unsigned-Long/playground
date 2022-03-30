@@ -28,6 +28,13 @@ namespace ns_myslam {
      */
     MySLAM &addFrame(MatPtr grayImg);
 
+    /**
+     * @brief get the current pose
+     *
+     * @return const Sophus::SE3d& current pose
+     */
+    Sophus::SE3d currentPose() const;
+
   protected:
     /**
      * @brief find good matches from two frames
@@ -126,7 +133,22 @@ namespace ns_myslam {
      * @return Sophus::SE3d the pose
      */
     Sophus::SE3d estimatePnP(const Sophus::SE3d &initVal, const std::vector<int> &mptIds);
+
+    /**
+     * @brief compute the PnP error for a map point
+     *
+     * @param mptId the id of the map point
+     * @param pose_cw pose from world to current frame
+     * @return double
+     */
+    double estimatePnPError(int mptId, const Sophus::SE3d &pose_cw);
+
+    /**
+     * @brief display current frame
+     */
+    void showCurrentFrame(Frame::Ptr frame) const;
   };
+
 } // namespace ns_myslam
 
 #endif
