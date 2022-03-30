@@ -10,6 +10,8 @@ namespace ns_myslam {
   class MapPoint {
   public:
     using Ptr = std::shared_ptr<MapPoint>;
+    // {frame id, key point index}
+    using kpt_pos_type = std::pair<int, int>;
     friend class MySLAM;
 
   private:
@@ -17,7 +19,7 @@ namespace ns_myslam {
     // coordinate value of the map point
     Eigen::Vector3d _pt;
     // {witch frame, witch key point}
-    std::vector<std::pair<int, int>> _frameFeatures;
+    std::vector<kpt_pos_type> _frameFeatures;
 
   public:
     /**
@@ -31,6 +33,8 @@ namespace ns_myslam {
      * @brief create a shared pointer
      */
     static MapPoint::Ptr create(int id, const Eigen::Vector3d &point);
+
+    std::pair<kpt_pos_type, kpt_pos_type> lastTwoFramesFeatures();
   };
 
 } // namespace ns_myslam
