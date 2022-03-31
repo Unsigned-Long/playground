@@ -1,6 +1,7 @@
 #ifndef MYSLAM_H
 #define MYSLAM_H
 
+#include "ba.h"
 #include "frame.h"
 
 namespace ns_myslam {
@@ -148,6 +149,8 @@ namespace ns_myslam {
      * @brief display current frame
      */
     void showCurrentFrame(Frame::Ptr frame, int wait) const;
+
+    void bundleAdjustment();
   };
 
 } // namespace ns_myslam

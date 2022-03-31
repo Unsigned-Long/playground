@@ -247,34 +247,21 @@ namespace ns_myslam {
         mptTriIds.pop_back();
       }
 
-      /////////////////
-      std::vector<cv::DMatch> matches;
-      for (const auto &mptId : mptTriIds) {
-        // get map point
-        auto mpt = this->findMapPoint(mptId);
-
-        if (mpt == nullptr) {
-          continue;
-        }
-
-        auto [feature1, feature2] = mpt->lastTwoFramesFeatures();
-        cv::DMatch m;
-        m.queryIdx = feature1.second;
-        m.trainIdx = feature2.second;
-        matches.push_back(m);
-      }
-      cv::Mat img;
-      cv::drawMatches(*(lastFrame->_grayImg), lastFrame->_kpts, *(curFrame->_grayImg), curFrame->_kpts, matches, img);
-      cv::imshow("win", img);
-      cv::waitKey(0);
-      ////////////////
-
     } else {
       ns_log::info("initialization for system");
       this->_initSystem = true;
 
       // append the current frame
       this->_frames.push_back(curFrame);
+    }
+
+    if (this->_frames.size() % 5 == 0) {
+      std::cout << "before pose:\n";
+      std::cout << this->_frames.back()->_pose_cw.matrix3x4() << std::endl;
+      this->bundleAdjustment();
+      std::cout << "after pose:\n";
+      std::cout << this->_frames.back()->_pose_cw.matrix3x4() << std::endl;
+      std::cin.get();
     }
 
     // output info
@@ -488,4 +475,41 @@ namespace ns_myslam {
     return;
   }
 
+  void MySLAM::bundleAdjustment() {
+    ceres::Problem prob;
+
+    // add residual block
+    for (auto &mpt : this->_map) {
+
+      if (mpt == nullptr) {
+        continue;
+      }
+      for (auto &[frameId, kptIdx] : mpt->_frameFeatures) {
+        auto frame = this->findFrame(frameId);
+        auto kpt = frame->_kpts.at(kptIdx);
+
+        Eigen::Vector2d pixel(kpt.pt.x, kpt.pt.y);
+
+        ceres::CostFunction *cfun = BundleAdjustment::createCostFun(pixel, this->_camera);
+        ceres::LossFunction *lfun = new ceres::HuberLoss(1.0);
+
+        prob.AddResidualBlock(cfun, lfun, mpt->_pt.data(), frame->_pose_cw.data());
+      }
+    }
+
+    // normalize the pose
+    for (auto &frame : this->_frames) {
+      frame->_pose_cw.normalize();
+    }
+
+    // solve problem
+    ceres::Solver::Options op;
+    op.linear_solver_type = ceres::LinearSolverType::SPARSE_SCHUR;
+    // op.minimizer_progress_to_stdout = true;
+    ceres::Solver::Summary sum;
+    ceres::Solve(op, &prob, &sum);
+    // std::cout << sum.FullReport() << std::endl;
+
+    return;
+  }
 } // namespace ns_myslam
