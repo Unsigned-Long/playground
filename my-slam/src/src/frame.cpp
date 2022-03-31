@@ -2,7 +2,7 @@
 
 namespace ns_myslam {
   Frame::Frame(int id, MatPtr grayImg, MonoCamera::Ptr camera, ORBFeature::Ptr orbFeature)
-      : _id(id), _grayImg(grayImg), _kpts(), _relatedMpts() {
+      : _id(id), _grayImg(grayImg), _kpts(), _relatedMpts(), _pose_cw() {
     this->pretreatment(camera, orbFeature);
   }
 

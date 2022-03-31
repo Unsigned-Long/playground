@@ -33,7 +33,7 @@ namespace ns_myslam {
     // the related map point's id, "-1" means there isn't a map point related with this key point
     std::vector<int> _relatedMpts;
 
-    Sophus::SE3d _pose;
+    Sophus::SE3d _pose_cw;
 
   public:
     /**

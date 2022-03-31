@@ -53,7 +53,7 @@ namespace ns_myslam {
      * @param frame2 the second frame
      * @return std::pair<cv::Mat, cv::Mat> the rotation matrix and translate matrix
      */
-    std::pair<cv::Mat, cv::Mat> initScale(const std::vector<cv::DMatch> &matches, Frame::Ptr frame1, Frame::Ptr frame2);
+    std::pair<cv::Mat, cv::Mat> computeScale(const std::vector<cv::DMatch> &matches, Frame::Ptr frame1, Frame::Ptr frame2);
 
     /**
      * @brief find the frame using the frame id
@@ -105,16 +105,17 @@ namespace ns_myslam {
     matchedKeyPoints(const std::vector<cv::DMatch> &matches, Frame::Ptr frame1, Frame::Ptr frame2);
 
     /**
-     * @brief compute the map point's coordinate using [triangulation]
+     * @brief compute the map point's coordinate using [triangulation] and error
      *
      * @param pixel1 the pixel in first frame
      * @param pixel2 the pixel in secnd frame
      * @param rotMat_21 rortation matrix from first frame to second frame
      * @param transMat_21 translation matrix from first frame to second frame
-     * @return Eigen::Vector3d the coordinate value of map point in the first frame camera coordinate system
+     * @return std::pair<Eigen::Vector3d, double> the coordinate value of map point in the first frame camera coordinate system
      */
-    Eigen::Vector3d triangulation(const Eigen::Vector2d &pixel1, const Eigen::Vector2d &pixel2,
-                                  const Eigen::Matrix3d &rotMat_21, const Eigen::Vector3d &transMat_21);
+    std::pair<Eigen::Vector3d, double>
+    triangulation(const Eigen::Vector2d &pixel1, const Eigen::Vector2d &pixel2,
+                  const Eigen::Matrix3d &rotMat_21, const Eigen::Vector3d &transMat_21);
 
     /**
      * @brief find key point in frame [frameId] indexed [kptIdx]

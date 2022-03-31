@@ -73,6 +73,7 @@
         "codecvt": "cpp",
         "future": "cpp",
         "valarray": "cpp",
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "specialfunctions": "cpp"
     }
 }

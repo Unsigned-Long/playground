@@ -6,14 +6,24 @@ namespace ns_myslam {
                          double p1, double p2)
       : fx(fx), fy(fy), fx_inv(1.0f / fx), fy_inv(1.0f / fy), cx(cx), cy(cy),
         k1(k1), k2(k2), k3(k3),
-        p1(p1), p2(p2),
-        _initialized(false), _winRange() {
+        p1(p1), p2(p2), _initialized(false),
+        _hasDistortion(true), _winRange() {
     this->_cameraMatrix = (cv::Mat_<double>(3, 3) << fx, 0.0, cx, 0.0, fy, cy, 0.0, 0.0, 1.0);
     this->_distCoeffs = (cv::Mat_<double>(4, 1) << k1, k2, p1, p2);
   }
 
+  MonoCamera::MonoCamera(double fx, double fy, double cx, double cy)
+      : fx(fx), fy(fy), fx_inv(1.0f / fx), fy_inv(1.0f / fy), cx(cx), cy(cy),
+        k1(0.0), k2(0.0), k3(0.0),
+        p1(0.0), p2(0.0), _initialized(false),
+        _hasDistortion(false), _winRange() {}
+
   MonoCamera::Ptr MonoCamera::create(double fx, double fy, double cx, double cy, double k1, double k2, double k3, double p1, double p2) {
     return std::make_shared<MonoCamera>(fx, fy, cx, cy, k1, k2, k3, p1, p2);
+  }
+
+  MonoCamera::Ptr MonoCamera::create(double fx, double fy, double cx, double cy) {
+    return std::make_shared<MonoCamera>(fx, fy, cx, cy);
   }
 
   Eigen::Vector3d MonoCamera::pixel2nplane(const Eigen::Vector2d &pixel) const {
@@ -35,9 +45,24 @@ namespace ns_myslam {
     // rows and cols of this image
     int rows = grayImg->rows, cols = grayImg->cols;
 
+    // if the images has been undistorted
+    if (!this->_hasDistortion) {
+      if (!this->_initialized) {
+
+        this->_winRange.first.start = 0;
+        this->_winRange.first.end = cols - 1;
+
+        this->_winRange.second.start = 0;
+        this->_winRange.second.end = rows - 1;
+
+        this->_initialized = true;
+      }
+      return this->_winRange;
+    }
+
     // image to keep the undistorted image
     auto undistortedImg = std::make_shared<cv::Mat>(rows, cols, grayImg->type());
-    
+
     // undistort [2 times faster than OpenCV]
     for (int r = 0; r != rows; ++r) {
       auto dstPtr = undistortedImg->ptr<uchar>(r);

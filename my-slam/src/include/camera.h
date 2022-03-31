@@ -25,6 +25,8 @@ namespace ns_myslam {
 
     mutable bool _initialized;
 
+    const bool _hasDistortion;
+
     // {[xMin, xMax), [yMin, yMax)}
     mutable std::pair<cv::Range, cv::Range> _winRange;
 
@@ -46,7 +48,11 @@ namespace ns_myslam {
      */
     MonoCamera(double fx, double fy, double cx, double cy, double k1, double k2, double k3, double p1, double p2);
 
+    MonoCamera(double fx, double fy, double cx, double cy);
+
     static MonoCamera::Ptr create(double fx, double fy, double cx, double cy, double k1, double k2, double k3, double p1, double p2);
+
+    static MonoCamera::Ptr create(double fx, double fy, double cx, double cy);
 
   public:
     /**
