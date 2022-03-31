@@ -29,9 +29,9 @@ namespace ns_myslam {
       Eigen::Vector3d transMat_21;
 
       // ids of new map points need to be triangulated
-      std::vector<int> triMptIds;
+      std::vector<int> mptTriIds;
       // ids of new map points need to be estimate [PnP]
-      std::vector<int> mptIdPnP;
+      std::vector<int> mptPnPIds;
 
       // create a map point for each good match if necessary
       for (const auto &match : goodMatches) {
@@ -50,7 +50,7 @@ namespace ns_myslam {
           // add ptr to the main map
           this->_map.push_back(newMpt);
 
-          triMptIds.push_back(newMpt->_id);
+          mptTriIds.push_back(newMpt->_id);
         } else {
           // there is a map point for key point in last frame
           int mptId = lastFrame->_relatedMpts.at(match.queryIdx);
@@ -59,7 +59,7 @@ namespace ns_myslam {
           mpt->_frameFeatures.push_back({curFrame->_id, match.trainIdx});
           curFrame->_relatedMpts.at(match.trainIdx) = mptId;
 
-          mptIdPnP.push_back(mptId);
+          mptPnPIds.push_back(mptId);
         }
       }
 
@@ -69,7 +69,6 @@ namespace ns_myslam {
       if (!this->_initScale) {
         ns_log::info("initialization for map scale [2d-2d]");
 
-        timer.reStart();
         // init the scale [2d-2d] using the first two frames
 
         while (true) {
@@ -81,25 +80,34 @@ namespace ns_myslam {
           cv::cv2eigen(t, transMat_21);
 
           // find the badest match
+          double maxError, meanError;
+          int maxErrorIdx;
 
-          double maxError = this->matchError(goodMatches.front(), rotMat_21, transMat_21, lastFrame, curFrame);
-          double meanError = maxError;
-          int maxErrorIdx = 0;
-          for (int i = 1; i != goodMatches.size(); ++i) {
+          for (int i = 0; i != goodMatches.size(); ++i) {
+
             double error = this->matchError(goodMatches.at(i), rotMat_21, transMat_21, lastFrame, curFrame);
-            meanError += error;
-            if (error > maxError) {
-              maxError = error;
-              maxErrorIdx = i;
+
+            if (i == 0) {
+              meanError = error, maxError = error;
+              maxErrorIdx = 0;
+            } else {
+              meanError += error;
+              if (error > maxError) {
+                maxError = error;
+                maxErrorIdx = i;
+              }
             }
           }
-          meanError /= goodMatches.size();
-          // if the error is big
 
+          meanError /= goodMatches.size();
+
+          // if the error is big
           if (maxError < 10.0 * meanError) {
             break;
           }
+
           auto maxErrorMatch = goodMatches.at(maxErrorIdx);
+
           // remove the map point [invalid map point]
           int mptId = lastFrame->_relatedMpts.at(maxErrorMatch.queryIdx);
           this->findMapPoint(mptId) = nullptr;
@@ -120,39 +128,47 @@ namespace ns_myslam {
 
       } else {
         ns_log::info("run PnP estimate [3d-2d]");
+
         // pose from world to current frame
         auto pose = lastFrame->_pose_cw;
 
         while (true) {
-          pose = this->estimatePnP(pose, mptIdPnP);
+          pose = this->estimatePnP(pose, mptPnPIds);
 
-          double maxError = this->estimatePnPError(mptIdPnP.front(), pose);
-          double meanError = maxError;
-          int maxErrorIdx = 0;
+          double maxError, meanError;
+          int maxErrorIdx;
 
-          for (int i = 1; i != mptIdPnP.size(); ++i) {
-            double error = this->estimatePnPError(mptIdPnP.at(i), pose);
-            meanError += error;
-            if (error > maxError) {
-              maxError = error;
-              maxErrorIdx = i;
+          for (int i = 0; i != mptPnPIds.size(); ++i) {
+            double error = this->estimatePnPError(mptPnPIds.at(i), pose);
+
+            if (i == 0) {
+              maxError = error, meanError = error;
+              maxErrorIdx = 0;
+            } else {
+              meanError += error;
+              if (error > maxError) {
+                maxError = error;
+                maxErrorIdx = i;
+              }
             }
           }
-          meanError /= mptIdPnP.size();
+          meanError /= mptPnPIds.size();
 
           if (maxError < 5.0 * meanError) {
             break;
           }
 
           // remove the match [key point with map point]
-          int maxErrorId = mptIdPnP.at(maxErrorIdx);
+          int maxErrorId = mptPnPIds.at(maxErrorIdx);
           auto [frameId, kptIdx] = this->findMapPoint(maxErrorId)->_frameFeatures.back();
           this->findFrame(frameId)->_relatedMpts.at(kptIdx) = -1;
+
           // remove the related map point
           this->findMapPoint(maxErrorId)->_frameFeatures.pop_back();
+
           // remove the map point to be estimate [PnP]
-          mptIdPnP.at(maxErrorIdx) = mptIdPnP.back();
-          mptIdPnP.pop_back();
+          mptPnPIds.at(maxErrorIdx) = mptPnPIds.back();
+          mptPnPIds.pop_back();
         }
 
         // pose from last frame to current frame
@@ -173,9 +189,9 @@ namespace ns_myslam {
         double triMaxError, triMeanError;
         int triMaxErrorIdx;
 
-        for (int i = 0; i != triMptIds.size(); ++i) {
+        for (int i = 0; i != mptTriIds.size(); ++i) {
           // get map point
-          auto mpt = this->findMapPoint(triMptIds.at(i));
+          auto mpt = this->findMapPoint(mptTriIds.at(i));
 
           if (mpt == nullptr) {
             continue;
@@ -208,7 +224,7 @@ namespace ns_myslam {
           mpt->_pt = lastFrame->_pose_cw.inverse() * mptInLastFrame;
         }
 
-        triMeanError /= triMptIds.size();
+        triMeanError /= mptTriIds.size();
 
         // if this frame is used to init the scale, then don't need to check the matches
         if (this->_frames.size() == 2) {
@@ -219,19 +235,44 @@ namespace ns_myslam {
           break;
         }
 
-        auto mpt = this->findMapPoint(triMptIds.at(triMaxErrorIdx));
+        auto mpt = this->findMapPoint(mptTriIds.at(triMaxErrorIdx));
+
         auto [feature1, feature2] = mpt->lastTwoFramesFeatures();
         this->findFrame(feature1.first)->_relatedMpts.at(feature1.second) = -1;
         this->findFrame(feature2.first)->_relatedMpts.at(feature2.second) = -1;
+
         mpt = nullptr;
-        triMptIds.at(triMaxErrorIdx) = triMptIds.back();
-        triMptIds.pop_back();
+
+        mptTriIds.at(triMaxErrorIdx) = mptTriIds.back();
+        mptTriIds.pop_back();
       }
+
+      /////////////////
+      std::vector<cv::DMatch> matches;
+      for (const auto &mptId : mptTriIds) {
+        // get map point
+        auto mpt = this->findMapPoint(mptId);
+
+        if (mpt == nullptr) {
+          continue;
+        }
+
+        auto [feature1, feature2] = mpt->lastTwoFramesFeatures();
+        cv::DMatch m;
+        m.queryIdx = feature1.second;
+        m.trainIdx = feature2.second;
+        matches.push_back(m);
+      }
+      cv::Mat img;
+      cv::drawMatches(*(lastFrame->_grayImg), lastFrame->_kpts, *(curFrame->_grayImg), curFrame->_kpts, matches, img);
+      cv::imshow("win", img);
+      cv::waitKey(0);
+      ////////////////
 
     } else {
       ns_log::info("initialization for system");
       this->_initSystem = true;
-      curFrame->_pose_cw = Sophus::SE3d();
+
       // append the current frame
       this->_frames.push_back(curFrame);
     }
@@ -239,6 +280,7 @@ namespace ns_myslam {
     // output info
     ns_log::info("current frame pose [ref to world]");
     std::cout << this->currentPose().matrix3x4() << std::endl;
+
     std::cout << timer.total_elapsed("adding frame [" + std::to_string(curFrame->_id) + "] costs") << std::endl;
     std::cout << std::endl;
 
@@ -251,16 +293,20 @@ namespace ns_myslam {
     // compute matches
     auto matches = this->_orbFeature->match(lastFrame->_grayImg, lastFrame->_kpts, curFrame->_grayImg, curFrame->_kpts);
     // find good matches
-    auto minDisIter = std::min_element(matches.cbegin(), matches.cend(), [](const cv::DMatch &m1, const cv::DMatch &m2) {
-      return m1.distance < m2.distance;
-    });
+    auto minDisIter = std::min_element(
+        matches.cbegin(), matches.cend(),
+        [](const cv::DMatch &m1, const cv::DMatch &m2) {
+          return m1.distance < m2.distance;
+        });
     std::vector<cv::DMatch> goodMatches;
+
     for (const auto &match : matches) {
       // the condition for good matches
       if (match.distance < std::max(2.0f * minDisIter->distance, 50.0f)) {
         goodMatches.push_back(match);
       }
     }
+
     return goodMatches;
   }
 
@@ -271,11 +317,11 @@ namespace ns_myslam {
     // compute the essential matrix
     cv::Point2d principalPoint(_camera->cx, _camera->cy);
     double focalLength = (_camera->fx + _camera->fy) / 2.0f;
-    cv::Mat essentialMatrix = findEssentialMat(pts1, pts2, focalLength, principalPoint);
+    cv::Mat essentialMat = findEssentialMat(pts1, pts2, focalLength, principalPoint);
 
     // get the rotation and translate matrix
     cv::Mat R, t;
-    cv::recoverPose(essentialMatrix, pts1, pts2, R, t, focalLength, principalPoint);
+    cv::recoverPose(essentialMat, pts1, pts2, R, t, focalLength, principalPoint);
 
     return {R, t};
   }
@@ -308,9 +354,9 @@ namespace ns_myslam {
     auto p2 = frame2->_kpts.at(match.trainIdx).pt;
     auto x2 = this->_camera->pixel2nplane(Eigen::Vector2d(p2.x, p2.y));
 
-    double error = x2.transpose() * this->vec2AntiMat(transMat_21) * rotMat_21 * x1;
+    double error = (x2.transpose() * this->vec2AntiMat(transMat_21) * rotMat_21 * x1).norm();
 
-    return std::abs(error);
+    return error;
   }
 
   std::pair<std::vector<cv::Point2d>, std::vector<cv::Point2d>>
@@ -366,13 +412,14 @@ namespace ns_myslam {
         auto mpt = this->findMapPoint(mptId);
 
         auto [frameId, kptIdx] = mpt->_frameFeatures.back();
+
         // key point
         auto kp = this->findKeyPoint(frameId, kptIdx);
+        Eigen::Vector2d pixel(kp.pt.x, kp.pt.y);
+
         // map point
         auto mptPt = pose * mpt->_pt;
         double X = mptPt(0), Y = mptPt(1), Z = mptPt(2), ZInv = 1.0 / Z, ZInv2 = 1.0 / (Z * Z);
-
-        Eigen::Vector2d pixel(kp.pt.x, kp.pt.y);
 
         // ocauculate the error
         auto error = pixel - this->_camera->nplane2pixel(Eigen::Vector3d(X / Z, Y / Z, 1.0));
@@ -409,8 +456,8 @@ namespace ns_myslam {
     auto mptPt = this->findMapPoint(mptId)->_pt;
     auto mptCurCoord = pose_cw * mptPt;
     // reproject to pixel
-    auto rePrjPixel = this->_camera->nplane2pixel(Eigen::Vector3d(
-        mptCurCoord(0) / mptCurCoord(2), mptCurCoord(1) / mptCurCoord(2), 1.0));
+    auto rePrjPixel = this->_camera->nplane2pixel(
+        Eigen::Vector3d(mptCurCoord(0) / mptCurCoord(2), mptCurCoord(1) / mptCurCoord(2), 1.0));
     // find key point
     auto [frameId, kptIdx] = this->findMapPoint(mptId)->_frameFeatures.back();
     auto pixel = this->findKeyPoint(frameId, kptIdx);
