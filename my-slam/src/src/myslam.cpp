@@ -236,9 +236,13 @@ namespace ns_myslam {
       this->_frames.push_back(curFrame);
     }
 
+    // output info
+    ns_log::info("current frame pose [ref to world]");
+    std::cout << this->currentPose().matrix3x4() << std::endl;
     std::cout << timer.total_elapsed("adding frame [" + std::to_string(curFrame->_id) + "] costs") << std::endl;
+    std::cout << std::endl;
 
-    this->showCurrentFrame(curFrame);
+    this->showCurrentFrame(curFrame, 10);
 
     return *this;
   }
@@ -423,7 +427,7 @@ namespace ns_myslam {
     }
   }
 
-  void MySLAM::showCurrentFrame(Frame::Ptr frame) const {
+  void MySLAM::showCurrentFrame(Frame::Ptr frame, int wait) const {
     cv::Mat img = frame->_grayImg->clone();
     cv::cvtColor(img, img, cv::COLOR_GRAY2BGR);
     for (int i = 0; i != frame->_kpts.size(); ++i) {
@@ -433,7 +437,7 @@ namespace ns_myslam {
       }
     }
     cv::imshow("win", img);
-    cv::waitKey(10);
+    cv::waitKey(wait);
     return;
   }
 

@@ -147,7 +147,7 @@ namespace ns_myslam {
     /**
      * @brief display current frame
      */
-    void showCurrentFrame(Frame::Ptr frame) const;
+    void showCurrentFrame(Frame::Ptr frame, int wait) const;
   };
 
 } // namespace ns_myslam

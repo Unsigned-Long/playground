@@ -28,8 +28,6 @@ int main(int argc, char const *argv[]) {
 
   for (const auto &name : imgNames) {
     slam.addFrame(std::make_shared<cv::Mat>(cv::imread(name, cv::IMREAD_GRAYSCALE)));
-    ns_log::process("current position: ", slam.currentPose().translation().transpose());
-    std::cout << "\n";
   }
   return 0;
 }
