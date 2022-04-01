@@ -18,7 +18,7 @@ std::vector<std::string> filesInDir(const std::string &directory) {
 
 int main(int argc, char const *argv[]) {
   // read data
-  auto imgNames = filesInDir("/home/csl/kitti/sequence/imgs");
+  auto imgNames = filesInDir("/home/csl/kitti/sequence/image_0");
   std::sort(imgNames.begin(), imgNames.end());
 
   double fx = 718.856, fy = 718.856, cx = 607.1928, cy = 185.2157;

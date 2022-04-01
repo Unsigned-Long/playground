@@ -256,12 +256,7 @@ namespace ns_myslam {
     }
 
     if (this->_frames.size() % 5 == 0) {
-      std::cout << "before pose:\n";
-      std::cout << this->_frames.back()->_pose_cw.matrix3x4() << std::endl;
       this->bundleAdjustment();
-      std::cout << "after pose:\n";
-      std::cout << this->_frames.back()->_pose_cw.matrix3x4() << std::endl;
-      std::cin.get();
     }
 
     // output info
