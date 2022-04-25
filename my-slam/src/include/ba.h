@@ -14,10 +14,9 @@ namespace ns_myslam {
     BundleAdjustment(const Eigen::Vector2d &pixel, MonoCamera::Ptr camera)
         : _pixel(pixel), _camera(camera) {}
 
+    // template <typename T>
     bool operator()(const double *const mapPt, const double *const pose, double *error) const {
-
       Eigen::Quaterniond q(pose);
-
       q.normalized();
 
       Eigen::Vector3d trans = Eigen::Vector3d(pose[4], pose[5], pose[6]);
@@ -36,7 +35,7 @@ namespace ns_myslam {
     }
 
     static ceres::CostFunction *createCostFun(const Eigen::Vector2d &pixel, MonoCamera::Ptr camera) {
-      return new ceres::NumericDiffCostFunction<BundleAdjustment, ceres::CENTRAL, 2, 3, 7>(
+      return new ceres::NumericDiffCostFunction<BundleAdjustment,ceres::CENTRAL, 2, 3, 7>(
           new BundleAdjustment(pixel, camera));
     }
   };
