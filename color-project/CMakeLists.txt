@@ -14,8 +14,4 @@ aux_source_directory(./src SRC_DIR)
 
 add_executable(colorProject ./main.cpp ${SRC_DIR})
 
-add_library(colorPrj SHARED ${SRC_DIR})
-
 target_link_libraries(colorProject ${OpenCV_LIBS})
-
-target_link_libraries(colorPrj ${OpenCV_LIBS})
