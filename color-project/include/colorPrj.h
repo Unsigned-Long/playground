@@ -7,7 +7,7 @@
 namespace ns_clp {
   using rgb = std::tuple<int, int, int>;
   using hsv = std::tuple<float, float, float>;
-  
+
   /**
    * \brief translate the hsv color space to rgb color space
    *

@@ -44,7 +44,7 @@ int main(int argc, char const *argv[]) {
   for (int i = 0; i != img.rows; ++i) {
     auto ptr = img.ptr<uchar>(i);
     for (int j = 0; j != img.cols; ++j) {
-      auto [r, g, b] = project(ps.front().z, min, max, false, 5, Color::orange);
+      auto [r, g, b] = project(ps.front().z, min, max, false, 0, Color::panchromatic);
       ptr[j * img.channels() + 0] = b;
       ptr[j * img.channels() + 1] = g;
       ptr[j * img.channels() + 2] = r;
