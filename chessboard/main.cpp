@@ -2,45 +2,41 @@
 #include "opencv2/core.hpp"
 #include "opencv2/highgui.hpp"
 
-using namespace ns_flags;
-
 int main(int argc, char const *argv[]) {
   try {
-    OptionParser parser;
-    parser.addOption<IntArg>("size", 100, "the width of each block");
-    parser.addOption<IntArg>("rows", 7, "the row count of the chess board");
-    parser.addOption<IntArg>("cols", 10, "the cols count of the chess board");
+    FLAGS_DEF_INT(size, s, "the size of each block", ns_flags::OptionProp::OPTIONAL, 100);
+    FLAGS_DEF_INT(rows, r, "the row count of the chess board", ns_flags::OptionProp::OPTIONAL, 5);
+    FLAGS_DEF_INT(cols, c, "the cols count of the chess board", ns_flags::OptionProp::OPTIONAL, 8);
 
-    parser.setDefaultOption<StringArg>("../images/board-100-7-10.png");
+    FLAGS_DEF_NO_OPTION(STRING, imgSavePath, "the save path of the chess board image",
+                        ns_flags::OptionProp::REQUIRED, "../images/board.png");
 
-    parser.setupParser(argc, argv);
+    ns_flags::setupFlags(argc, argv);
 
-    int size = parser.getOptionArgv<IntArg>("size");
-    int rows = parser.getOptionArgv<IntArg>("rows");
-    int cols = parser.getOptionArgv<IntArg>("cols");
-    std::string path = parser.getDefaultOptionArgv<StringArg>();
-
-    if (size <= 0) {
+    if (flags_size <= 0) {
       throw std::runtime_error("the 'size' is invalid");
     }
-    if (rows <= 0) {
+    if (flags_rows <= 0) {
       throw std::runtime_error("the 'rows' is invalid");
     }
-    if (cols <= 0) {
+    if (flags_cols <= 0) {
       throw std::runtime_error("the 'cols' is invalid");
     }
 
-    cv::Mat board(rows * size, cols * size, CV_8UC1, cv::Scalar(255));
+    flags_cols += 1;
+    flags_rows += 1;
 
-    for (int i = 0; i != rows; ++i) {
-      for (int j = 0; j != cols; ++j) {
+    cv::Mat board(flags_rows * flags_size, flags_cols * flags_size, CV_8UC1, cv::Scalar(255));
+
+    for (int i = 0; i != flags_rows; ++i) {
+      for (int j = 0; j != flags_cols; ++j) {
         if ((i + j) % 2 == 0) {
-          board(cv::Rect2i(j * size, i * size, size, size)).setTo(0);
+          board(cv::Rect2i(j * flags_size, i * flags_size, flags_size, flags_size)).setTo(0);
         }
       }
     }
 
-    cv::imwrite(path, board);
+    cv::imwrite(flags_imgSavePath, board);
 
   } catch (const std::exception &e) {
     std::cerr << e.what() << '\n';
