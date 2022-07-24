@@ -1,4 +1,5 @@
 #include "artwork/flags/flags.hpp"
+#include "artwork/logger/logger.h"
 #include "opencv2/core.hpp"
 #include "opencv2/highgui.hpp"
 
@@ -9,7 +10,7 @@ int main(int argc, char const *argv[]) {
     FLAGS_DEF_INT(cols, c, "the cols count of the chess board", ns_flags::OptionProp::OPTIONAL, 8);
 
     FLAGS_DEF_NO_OPTION(STRING, imgSavePath, "the save path of the chess board image",
-                        ns_flags::OptionProp::REQUIRED, "../images/board.png");
+                        ns_flags::OptionProp::OPTIONAL, "../images/board.png");
 
     ns_flags::setupFlags(argc, argv);
 
@@ -23,8 +24,12 @@ int main(int argc, char const *argv[]) {
       throw std::runtime_error("the 'cols' is invalid");
     }
 
+    LOG_VAR(flags_size, flags_imgSavePath);
+    LOG_VAR(flags_rows, flags_cols);
+
     flags_cols += 1;
     flags_rows += 1;
+
 
     cv::Mat board(flags_rows * flags_size, flags_cols * flags_size, CV_8UC1, cv::Scalar(255));
 
